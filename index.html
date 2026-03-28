@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Organisasjon → Prosjekter (offline demo)</title>
+  <title>Operasjonsadministrasjon – Politiet</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header>
-    <h1>Offline demo: Organisasjon → Personer → Prosjekter</h1>
+    <h1>Operasjonsadministrasjon</h1>
     <div class="toolbar">
       <button id="btnImport">Import JSON</button>
       <button id="btnExport">Eksport JSON</button>
@@ -23,7 +23,7 @@
       <div class="panel-header">
         <h2>Avdelinger</h2>
         <div class="small">
-          Klikk en node for å se personer.  
+          Klikk en node for å se personer.
         </div>
       </div>
       <div id="tree" class="tree"></div>
@@ -56,13 +56,13 @@
     <!-- Right: Projects -->
     <section class="panel">
       <div class="panel-header">
-        <h2>Prosjekter</h2>
+        <h2>Operasjoner</h2>
         <div class="controls">
           <select id="projectSelect"></select>
-          <button id="btnNewProject">Nytt prosjekt</button>
+          <button id="btnNewProject">Ny operasjon</button>
           <button id="btnProjectStatus">Endre status</button>
         </div>
-        <div class="small" id="projectInfo">Velg et prosjekt</div>
+        <div class="small" id="projectInfo">Velg en operasjon</div>
       </div>
 
       <div class="actions">
@@ -70,7 +70,7 @@
         <button id="btnAddAllFromDept" disabled>Legg til alle fra valgt avdeling</button>
       </div>
 
-      <h3 class="subheader">Medlemmer i prosjekt</h3>
+      <h3 class="subheader">Medlemmer i operasjon</h3>
       <div id="projectMembers" class="list"></div>
     </section>
   </main>

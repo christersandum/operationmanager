@@ -1,0 +1,2 @@
+# operationmanager
+Administrasjon av operasjoner

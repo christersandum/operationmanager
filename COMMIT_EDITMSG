@@ -1,0 +1,28 @@
+# --- Node / frontend (hvis aktuelt) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Lokal konfig / secrets ---
+config.js
+.env
+
+# --- OS-spesifikke filer ---
+.DS_Store
+Thumbs.db
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+
+# --- Build / cache ---
+dist/
+build/
+.cache/
+
+# --- Logger ---
+*.log
+
+# --- Midlertidige filer ---
+*.tmp

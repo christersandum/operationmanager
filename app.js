@@ -94,6 +94,23 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+function esc(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 function isAdmin() {
   return state.currentUserProfile === "admin";
 }
@@ -1101,7 +1118,7 @@ function renderEmployeeItems(listEl, employees) {
 
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.innerHTML = `<span>${e.title ? e.title : "—"}</span><span>ID: ${e.id}</span>`;
+    meta.innerHTML = `<span>${e.title ? esc(e.title) : "—"}</span><span>ID: ${esc(e.id)}</span>`;
 
     item.appendChild(title);
     item.appendChild(meta);
@@ -1331,7 +1348,7 @@ async function renderOperationMembers(departments, employees) {
 
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.innerHTML = `<span>${r.e.title || "—"}</span><span>lagt til: ${new Date(r.m.addedAt).toLocaleString("no-NO")}</span>`;
+    meta.innerHTML = `<span>${r.e.title ? esc(r.e.title) : "—"}</span><span>lagt til: ${new Date(r.m.addedAt).toLocaleString("no-NO")}</span>`;
 
     const row = document.createElement("div");
     row.className = "row-inline";
@@ -1404,13 +1421,13 @@ async function renderOperationMembersTree(departments, employees, memberships) {
 
   function renderNode(node, container) {
     const kids = prunedChildren.get(node.id) || [];
-    the_hasKids = kids.length > 0;
+    const hasKids = kids.length > 0;
 
     const row = document.createElement("div");
     row.className = "node" + (state.opMembersDeptFilterId === node.id ? " selected" : "");
 
     const caret = document.createElement("div");
-    caret.textContent = the_hasKids ? "▾" : "•";
+    caret.textContent = hasKids ? "▾" : "•";
 
     const name = document.createElement("div");
     name.className = "name";
@@ -1427,7 +1444,7 @@ async function renderOperationMembersTree(departments, employees, memberships) {
     });
 
     container.appendChild(row);
-    if (the_hasKids) {
+    if (hasKids) {
       const indent = document.createElement("div");
       indent.className = "indent";
       container.appendChild(indent);
@@ -1480,7 +1497,7 @@ async function renderOperationMembersTree(departments, employees, memberships) {
 
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.innerHTML = `<span>${r.e.title || "—"}</span><span>rolle: ${r.m.role || "Deltaker"}</span>`;
+    meta.innerHTML = `<span>${r.e.title ? esc(r.e.title) : "—"}</span><span>rolle: ${r.m.role ? esc(r.m.role) : "Deltaker"}</span>`;
 
     const row = document.createElement("div");
     row.className = "row-inline";
@@ -1573,7 +1590,7 @@ async function renderSelectedPersonOperations(operations) {
 
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.innerHTML = `<span>Status: ${r.op.status || "—"}</span><span>lagt til: ${new Date(r.m.addedAt).toLocaleString("no-NO")}</span>`;
+    meta.innerHTML = `<span>Status: ${r.op.status ? esc(r.op.status) : "—"}</span><span>lagt til: ${new Date(r.m.addedAt).toLocaleString("no-NO")}</span>`;
 
     const row = document.createElement("div");
     row.className = "row-inline";
@@ -2121,8 +2138,6 @@ async function exportJSON() {
     employees,
     operations,
     operationMembers,
-    projects: operations,
-    projectMembers: operationMembers,
     favoriteNodes,
     favoriteMembers,
   };
@@ -2230,6 +2245,102 @@ function updateActionButtons() {
   if (btnRemoveFromFav) btnRemoveFromFav.disabled = !(inFavoriteGroup && hasEmployee && isAdmin());
 }
 
+// -------------------- Create departments and employees --------------------
+async function createDepartment() {
+  if (!isAdmin()) return;
+  const departments = await getAll(db, "departments");
+  const parentOptions = [
+    `<option value="">— Ingen (toppnivå) —</option>`,
+    ...departments.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`),
+  ].join("\n");
+
+  showModal(
+    "Ny avdeling",
+    `
+      <div class="field">
+        <label>Navn</label>
+        <input name="name" required placeholder="Avdelingsnavn" />
+      </div>
+      <div class="field">
+        <label>Overordnet avdeling (valgfritt)</label>
+        <select name="parentId">
+          ${parentOptions}
+        </select>
+      </div>
+    `,
+    async (fd) => {
+      const name = (fd.get("name") || "").toString().trim();
+      const parentId = (fd.get("parentId") || "").toString() || null;
+      if (!name) throw new Error("Navn er påkrevd.");
+
+      const dept = { id: uuid("dept"), name, parentId };
+      await putMany(db, "departments", [dept]);
+
+      state.selectedDeptId = dept.id;
+      if (parentId) {
+        state.collapsed.delete(parentId);
+      }
+      setStatus("Avdeling opprettet");
+      await refreshAll();
+    }
+  );
+
+  const parentSel = document.querySelector("#modalBody select[name='parentId']");
+  if (parentSel && state.selectedDeptId) parentSel.value = state.selectedDeptId;
+}
+
+async function createEmployee() {
+  if (!isAdmin()) return;
+  const departments = await getAll(db, "departments");
+
+  if (!departments.length) {
+    alert("Det finnes ingen avdelinger ennå. Opprett eller importer en avdeling først.");
+    return;
+  }
+
+  const deptOptions = departments
+    .map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`)
+    .join("\n");
+
+  showModal(
+    "Ny person",
+    `
+      <div class="field">
+        <label>Navn</label>
+        <input name="name" required placeholder="Ola Nordmann" />
+      </div>
+      <div class="field">
+        <label>Tittel</label>
+        <input name="title" placeholder="Etterforsker" />
+      </div>
+      <div class="field">
+        <label>Avdeling</label>
+        <select name="deptId" required>
+          ${deptOptions}
+        </select>
+      </div>
+    `,
+    async (fd) => {
+      const name = (fd.get("name") || "").toString().trim();
+      const title = (fd.get("title") || "").toString().trim();
+      const deptId = (fd.get("deptId") || "").toString();
+      if (!name) throw new Error("Navn er påkrevd.");
+      if (!deptId) throw new Error("Velg en avdeling.");
+
+      const emp = { id: uuid("emp"), name, title, deptId };
+      await putMany(db, "employees", [emp]);
+
+      state.selectedEmployeeId = emp.id;
+      state.selectedDeptId = deptId;
+      setStatus("Person opprettet");
+      await refreshAll();
+    }
+  );
+
+  const deptSel = document.querySelector("#modalBody select[name='deptId']");
+  if (deptSel && state.selectedDeptId) deptSel.value = state.selectedDeptId;
+}
+
 // -------------------- Create / Update operations --------------------
 async function createOperation() {
   if (!isAdmin()) return;
@@ -2290,7 +2401,7 @@ async function changeOperationStatus() {
     `
       <div class="field">
         <label>Operasjon</label>
-        <input value="${current.name}" disabled />
+        <input value="${esc(current.name)}" disabled />
       </div>
       <div class="field">
         <label>Status</label>
@@ -2368,10 +2479,10 @@ async function wire() {
     refreshAll();
   });
 
-  el("search")?.addEventListener("input", (e) => {
+  el("search")?.addEventListener("input", debounce((e) => {
     state.search = e.target.value;
     refreshAll();
-  });
+  }, 200));
 
   el("projectSelect")?.addEventListener("change", (e) => {
     state.selectedOperationId = e.target.value || null;
@@ -2379,7 +2490,9 @@ async function wire() {
   });
 
   el("btnNewProject")?.addEventListener("click", createOperation);
-  el("btnProjectStatus")?.addEventListener
+  el("btnProjectStatus")?.addEventListener("click", changeOperationStatus);
+  el("btnNewDept")?.addEventListener("click", createDepartment);
+  el("btnNewEmp")?.addEventListener("click", createEmployee);
 
   el("btnAddSelected")?.addEventListener("click", async () => {
     if (!isAdmin()) return;

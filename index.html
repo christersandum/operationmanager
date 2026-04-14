@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Organisasjon → Prosjekter (offline demo)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Offline demo: Organisasjon → Personer → Prosjekter</h1>
+    <div class="toolbar">
+      <button id="btnImport">Import JSON</button>
+      <button id="btnExport">Eksport JSON</button>
+      <button id="btnReset" class="danger">Nullstill</button>
+      <span id="status" class="status">Klar</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Left: Tree -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Avdelinger</h2>
+        <div class="small">
+          Klikk en node for å se personer.  
+        </div>
+      </div>
+      <div id="tree" class="tree"></div>
+      <div class="panel-footer">
+        <button id="btnNewDept">Ny underavdeling</button>
+      </div>
+    </section>
+
+    <!-- Middle: Employees -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Personer</h2>
+        <div class="controls">
+          <input id="search" type="text" placeholder="Søk navn…" />
+          <label class="checkbox">
+            <input id="includeChildren" type="checkbox" checked />
+            Inkluder underavdelinger
+          </label>
+        </div>
+        <div class="small" id="deptBreadcrumb">Ingen avdeling valgt</div>
+      </div>
+
+      <div id="employeeList" class="list"></div>
+
+      <div class="panel-footer">
+        <button id="btnNewEmp">Ny person</button>
+      </div>
+    </section>
+
+    <!-- Right: Projects -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Prosjekter</h2>
+        <div class="controls">
+          <select id="projectSelect"></select>
+          <button id="btnNewProject">Nytt prosjekt</button>
+          <button id="btnProjectStatus">Endre status</button>
+        </div>
+        <div class="small" id="projectInfo">Velg et prosjekt</div>
+      </div>
+
+      <div class="actions">
+        <button id="btnAddSelected" disabled>Legg til valgt person</button>
+        <button id="btnAddAllFromDept" disabled>Legg til alle fra valgt avdeling</button>
+      </div>
+
+      <h3 class="subheader">Medlemmer i prosjekt</h3>
+      <div id="projectMembers" class="list"></div>
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <dialog id="modal">
+    <form method="dialog" id="modalForm" class="modal">
+      <h3 id="modalTitle">Tittel</h3>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button value="cancel">Avbryt</button>
+        <button id="modalOk" value="ok" class="primary">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <input id="fileInput" type="file" accept="application/json" hidden />
+
+  <script src="app.js"></script>
+</body>
+</html>

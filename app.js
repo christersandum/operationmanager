@@ -991,6 +991,7 @@ function renderTree(employees, childrenByParent) {
         const empCaret = document.createElement("div");
         empCaret.className = "caret";
         empCaret.textContent = "👤";
+        empCaret.setAttribute("aria-hidden", "true");
 
         const empName = document.createElement("div");
         empName.className = "name";
@@ -2603,9 +2604,8 @@ async function wire() {
       }
     });
     pmList.addEventListener("dragleave", (ev) => {
-      if (!pmList.contains(ev.relatedTarget)) {
-        pmList.classList.remove("drag-over");
-      }
+      if (ev.relatedTarget && pmList.contains(ev.relatedTarget)) return;
+      pmList.classList.remove("drag-over");
     });
     pmList.addEventListener("drop", async (ev) => {
       ev.preventDefault();
@@ -2652,9 +2652,8 @@ async function wire() {
       }
     });
     empList.addEventListener("dragleave", (ev) => {
-      if (!empList.contains(ev.relatedTarget)) {
-        empList.classList.remove("drag-over");
-      }
+      if (ev.relatedTarget && empList.contains(ev.relatedTarget)) return;
+      empList.classList.remove("drag-over");
     });
     empList.addEventListener("drop", async (ev) => {
       ev.preventDefault();

@@ -649,7 +649,7 @@ async function resolveViewerScope() {
 // -------------------- UI inject: tabs + favorite + file menu --------------------
 function ensureRightPanelTabs() {
   const panels = document.querySelectorAll("main.layout .panel");
-  const rightPanel = panels?.[2];
+  const rightPanel = panels?.[1];
   if (!rightPanel) return;
 
   const h2 = rightPanel.querySelector(".panel-header h2");
@@ -886,22 +886,44 @@ function renderTree(employees, childrenByParent) {
     countByDept.set(e.deptId, (countByDept.get(e.deptId) || 0) + 1);
   }
 
+  // Build employees-by-dept for leaf nodes in tree
+  const empsByDept = new Map();
+  for (const e of employees) {
+    if (!e.deptId) continue;
+    if (!empsByDept.has(e.deptId)) empsByDept.set(e.deptId, []);
+    empsByDept.get(e.deptId).push(e);
+  }
+  for (const [, list] of empsByDept) {
+    list.sort((a, b) => (a.name || "").localeCompare(b.name || "", "no"));
+  }
+
   function renderNode(node, container) {
     const kids = childrenByParent.get(node.id) || [];
     const hasKids = kids.length > 0;
     const isCollapsed = state.collapsed.has(node.id);
 
     const isFav = !!node._type;
+    const deptEmps = !isFav ? (empsByDept.get(node.id) || []) : [];
+    const hasContent = hasKids || deptEmps.length > 0;
     const isSelectedDept = !isFav && state.selectedDeptId === node.id && state.viewMode === "dept";
     const isSelectedFav = isFav && state.selectedFavoriteNodeId === node.id && state.viewMode === "favorite";
 
     const row = document.createElement("div");
     row.className = "node" + ((isSelectedDept || isSelectedFav) ? " selected" : "");
 
+    if (!isFav && isAdmin()) {
+      row.draggable = true;
+      row.dataset.deptId = node.id;
+      row.addEventListener("dragstart", (ev) => {
+        ev.dataTransfer.setData("text/x-dept-id", node.id);
+        ev.dataTransfer.effectAllowed = "copy";
+      });
+    }
+
     const caret = document.createElement("div");
     caret.className = "caret";
-    caret.textContent = hasKids ? (isCollapsed ? "▸" : "▾") : "•";
-    if (hasKids) {
+    caret.textContent = hasContent ? (isCollapsed ? "▸" : "▾") : "•";
+    if (hasContent) {
       caret.addEventListener("click", (ev) => {
         ev.stopPropagation();
         if (state.collapsed.has(node.id)) state.collapsed.delete(node.id);
@@ -937,7 +959,7 @@ function renderTree(employees, childrenByParent) {
     });
 
     row.addEventListener("dblclick", () => {
-      if (!hasKids) return;
+      if (!hasContent) return;
       if (state.collapsed.has(node.id)) state.collapsed.delete(node.id);
       else state.collapsed.add(node.id);
       refreshAll();
@@ -945,11 +967,47 @@ function renderTree(employees, childrenByParent) {
 
     container.appendChild(row);
 
-    if (hasKids && !isCollapsed) {
+    if (hasContent && !isCollapsed) {
       const indent = document.createElement("div");
       indent.className = "indent";
       container.appendChild(indent);
       for (const k of kids) renderNode(k, indent);
+
+      // Employee leaf nodes (only for real department nodes)
+      for (const e of deptEmps) {
+        const empRow = document.createElement("div");
+        empRow.className = "node" + (state.selectedEmployeeId === e.id ? " selected" : "");
+        empRow.dataset.empId = e.id;
+
+        if (isAdmin()) {
+          empRow.draggable = true;
+          empRow.addEventListener("dragstart", (ev) => {
+            ev.stopPropagation();
+            ev.dataTransfer.setData("text/x-emp-id", e.id);
+            ev.dataTransfer.effectAllowed = "copy";
+          });
+        }
+
+        const empCaret = document.createElement("div");
+        empCaret.className = "caret";
+        empCaret.textContent = "👤";
+        empCaret.setAttribute("aria-hidden", "true");
+
+        const empName = document.createElement("div");
+        empName.className = "name";
+        empName.textContent = e.name;
+
+        empRow.append(empCaret, empName);
+        empRow.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          state.selectedEmployeeId = e.id;
+          state.selectedDeptId = e.deptId;
+          state.viewMode = "dept";
+          await refreshAll();
+        });
+
+        indent.appendChild(empRow);
+      }
     }
   }
 
@@ -1100,6 +1158,15 @@ function renderEmployeeItems(listEl, employees) {
     const item = document.createElement("div");
     item.className = "item" + (state.selectedEmployeeId === e.id ? " selected" : "");
 
+    if (isAdmin()) {
+      item.draggable = true;
+      item.dataset.empId = e.id;
+      item.addEventListener("dragstart", (ev) => {
+        ev.dataTransfer.setData("text/x-emp-id", e.id);
+        ev.dataTransfer.effectAllowed = "copy";
+      });
+    }
+
     item.addEventListener("click", async () => {
       state.selectedEmployeeId = e.id;
 
@@ -1215,7 +1282,7 @@ async function updateMemberRole(operationId, employeeId, newRole) {
 // -------------------- Operation content bar (integrated) --------------------
 async function renderOperationContentBar(operations) {
   const panels = document.querySelectorAll("main.layout .panel");
-  const rightPanel = panels?.[2];
+  const rightPanel = panels?.[1];
   if (!rightPanel) return;
 
   const actions = rightPanel.querySelector(".actions");
@@ -1261,7 +1328,7 @@ async function renderOperationMembers(departments, employees) {
   if (!list) return;
 
   const panels = document.querySelectorAll("main.layout .panel");
-  const rightPanel = panels?.[2];
+  const rightPanel = panels?.[1];
   const sub = rightPanel?.querySelector(".subheader");
   if (sub) sub.textContent = "Medlemmer i operasjon";
 
@@ -1341,6 +1408,15 @@ async function renderOperationMembers(departments, employees) {
   for (const r of rows) {
     const item = document.createElement("div");
     item.className = "item";
+
+    if (isAdmin()) {
+      item.draggable = true;
+      item.dataset.empId = r.e.id;
+      item.addEventListener("dragstart", (ev) => {
+        ev.dataTransfer.setData("text/x-remove-emp-id", r.e.id);
+        ev.dataTransfer.effectAllowed = "move";
+      });
+    }
 
     const title = document.createElement("div");
     title.className = "title";
@@ -1491,6 +1567,15 @@ async function renderOperationMembersTree(departments, employees, memberships) {
     const item = document.createElement("div");
     item.className = "item";
 
+    if (isAdmin()) {
+      item.draggable = true;
+      item.dataset.empId = r.e.id;
+      item.addEventListener("dragstart", (ev) => {
+        ev.dataTransfer.setData("text/x-remove-emp-id", r.e.id);
+        ev.dataTransfer.effectAllowed = "move";
+      });
+    }
+
     const title = document.createElement("div");
     title.className = "title";
     title.textContent = r.e.name;
@@ -1544,7 +1629,7 @@ async function renderSelectedPersonOperations(operations) {
   if (!list) return;
 
   const panels = document.querySelectorAll("main.layout .panel");
-  const rightPanel = panels?.[2];
+  const rightPanel = panels?.[1];
   const sub = rightPanel?.querySelector(".subheader");
   if (sub) sub.textContent = "Operasjoner for valgt person";
 
@@ -2505,6 +2590,84 @@ async function wire() {
   el("btnAddAllFromDept")?.addEventListener("click", async () => {
     await addAllFromSelectedScopeToOperation();
   });
+
+  // -------------------- Drag and drop --------------------
+  // #projectMembers as drop target for employees and departments
+  const pmList = el("projectMembers");
+  if (pmList) {
+    pmList.addEventListener("dragover", (ev) => {
+      if (!isAdmin() || !state.selectedOperationId) return;
+      const types = ev.dataTransfer.types;
+      if (types.includes("text/x-emp-id") || types.includes("text/x-dept-id")) {
+        ev.preventDefault();
+        pmList.classList.add("drag-over");
+      }
+    });
+    pmList.addEventListener("dragleave", (ev) => {
+      if (ev.relatedTarget && pmList.contains(ev.relatedTarget)) return;
+      pmList.classList.remove("drag-over");
+    });
+    pmList.addEventListener("drop", async (ev) => {
+      ev.preventDefault();
+      pmList.classList.remove("drag-over");
+      if (!isAdmin() || !state.selectedOperationId) return;
+      const empId = ev.dataTransfer.getData("text/x-emp-id");
+      const deptId = ev.dataTransfer.getData("text/x-dept-id");
+      if (empId) {
+        await addEmployeeToOperation(state.selectedOperationId, empId);
+        setStatus("Person lagt til i operasjon");
+        await refreshAll();
+      } else if (deptId) {
+        const [departments, employees] = await Promise.all([getAll(db, "departments"), getAll(db, "employees")]);
+        const children = buildChildrenMap(departments);
+        const deptIds = collectDescendantIds(children, deptId);
+        const deptSet = new Set(deptIds);
+        const candidates = employees.filter(e => deptSet.has(e.deptId));
+        const existing = await getByIndex(db, "projectMembers", "byProject", state.selectedOperationId);
+        const existingSet = new Set(existing.map(m => m.employeeId));
+        const toAdd = candidates
+          .filter(e => !existingSet.has(e.id))
+          .map(e => ({
+            id: `${state.selectedOperationId}::${e.id}`,
+            projectId: state.selectedOperationId,
+            employeeId: e.id,
+            addedAt: new Date().toISOString(),
+            role: "Deltaker"
+          }));
+        await putMany(db, "projectMembers", toAdd);
+        setStatus(`La til ${toAdd.length} personer fra avdeling`);
+        await refreshAll();
+      }
+    });
+  }
+
+  // #employeeList as remove-zone drop target
+  const empList = el("employeeList");
+  if (empList) {
+    empList.addEventListener("dragover", (ev) => {
+      if (!isAdmin()) return;
+      if (ev.dataTransfer.types.includes("text/x-remove-emp-id")) {
+        ev.preventDefault();
+        empList.classList.add("drag-over");
+      }
+    });
+    empList.addEventListener("dragleave", (ev) => {
+      if (ev.relatedTarget && empList.contains(ev.relatedTarget)) return;
+      empList.classList.remove("drag-over");
+    });
+    empList.addEventListener("drop", async (ev) => {
+      ev.preventDefault();
+      empList.classList.remove("drag-over");
+      if (!isAdmin() || !state.selectedOperationId) return;
+      const empId = ev.dataTransfer.getData("text/x-remove-emp-id");
+      if (empId) {
+        const id = `${state.selectedOperationId}::${empId}`;
+        await deleteKey(db, "projectMembers", id);
+        setStatus("Fjernet fra operasjon");
+        await refreshAll();
+      }
+    });
+  }
 }
 
 // -------------------- Bootstrap --------------------

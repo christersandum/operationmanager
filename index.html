@@ -32,7 +32,28 @@
       </div>
     </section>
 
-    <!-- Middle: Employees -->
+    <!-- Middle: Operations -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Operasjoner</h2>
+        <div class="controls">
+          <select id="projectSelect"></select>
+          <button id="btnNewProject">Ny operasjon</button>
+          <button id="btnProjectStatus">Endre status</button>
+        </div>
+        <div class="small" id="projectInfo">Velg en operasjon</div>
+      </div>
+
+      <div class="actions">
+        <button id="btnAddSelected" disabled>Legg til valgt person</button>
+        <button id="btnAddAllFromDept" disabled>Legg til alle fra valgt avdeling</button>
+      </div>
+
+      <h3 class="subheader">Operasjonsmedlemmer</h3>
+      <div id="projectMembers" class="list"></div>
+    </section>
+
+    <!-- Right: Employees -->
     <section class="panel">
       <div class="panel-header">
         <h2>Personer</h2>
@@ -51,27 +72,6 @@
       <div class="panel-footer">
         <button id="btnNewEmp">Ny person</button>
       </div>
-    </section>
-
-    <!-- Right: Projects -->
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Prosjekter</h2>
-        <div class="controls">
-          <select id="projectSelect"></select>
-          <button id="btnNewProject">Nytt prosjekt</button>
-          <button id="btnProjectStatus">Endre status</button>
-        </div>
-        <div class="small" id="projectInfo">Velg et prosjekt</div>
-      </div>
-
-      <div class="actions">
-        <button id="btnAddSelected" disabled>Legg til valgt person</button>
-        <button id="btnAddAllFromDept" disabled>Legg til alle fra valgt avdeling</button>
-      </div>
-
-      <h3 class="subheader">Medlemmer i prosjekt</h3>
-      <div id="projectMembers" class="list"></div>
     </section>
   </main>
 

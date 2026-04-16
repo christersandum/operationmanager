@@ -148,3 +148,14 @@ dialog{
 .field{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
 .field label{ color:var(--muted); font-size:12px; }
 .field input, .field select{ width:100%; }
+
+.drag-over {
+  outline: 2px dashed var(--accent);
+  background: rgba(77, 163, 255, 0.08);
+}
+[draggable="true"] {
+  cursor: grab;
+}
+[draggable="true"]:active {
+  cursor: grabbing;
+}
